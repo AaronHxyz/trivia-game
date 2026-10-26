@@ -158,55 +158,122 @@
         errName.textContent = "";
         errEmail.textContent = "";
 
-        // TODO:
+        // TODO: done
         // - Name: 2–30 characters after trim()
         // - Email: basic valid shape (example: a@b.com)
         // - Show errors in errName / errEmail
         // - Return true if valid else false
-        return true;
+
+        var name = nameInput.value.trim();
+        var email = emailInput.value.trim();
+
+        var valid = true;
+
+        if (name.length < 2 || name.length > 30) {
+            errName.textContent = "Name must be between 2 and 30 characters.";
+            valid = false;
+        }
+
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            errEmail.textContent = "Please enter a valid email address.";
+            valid = false;
+        }
+
+        return valid;
     }
 
     // ======================================================
     // TASK B: Load best score from localStorage
     // ======================================================
     function loadProgress() {
-        // TODO: implement robust load:
+        // TODO: implement robust load: done
         // - Return default { bestScore: 0, bestTotal: 0, attempts: 0 } if missing/invalid
-        return { bestScore: 0, bestTotal: 0, attempts: 0 };
+        var saved = localStorage.getItem(STORAGE_KEY);
+
+        if (!saved) {
+            return { bestScore: 0, bestTotal: 0, attempts: 0 };
+        }
+
+        try {
+            var progress = JSON.parse(saved);
+
+            if (typeof progress.bestScore !== "number" || typeof progress.bestTotal !== "number" || typeof progress.attempts !== "number" || !Number.isFinite(progress.bestScore) || !Number.isFinite(progress.bestTotal) || !Number.isFinite(progress.attempts) || progress.bestScore < 0 || progress.bestTotal < 0 || progress.attempts < 0) {
+                return { bestScore: 0, bestTotal: 0, attempts: 0 };
+            }
+
+            return progress;
+        } catch (e) {
+            return { bestScore: 0, bestTotal: 0, attempts: 0 };
+        }
+        
     }
 
     // ======================================================
     // TASK B: Save best score to localStorage
     // ======================================================
     function saveProgress(obj) {
-        // TODO: JSON.stringify + localStorage.setItem(STORAGE_KEY, ...)
+        // TODO: JSON.stringify + localStorage.setItem(STORAGE_KEY, ...) done
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
     }
 
     // ======================================================
     // TASK C: Request a token from OpenTDB
     // ======================================================
     async function getToken() {
-        // TODO:
+        // TODO: done
         // - var res = await fetch(API.token)
         // - if (!res.ok) throw Error(...)
         // - var data = await res.json()
         // - if (!data.token) throw Error(...)
         // - return data.token
-        return null;
+        
+        var res = await fetch(API.token);
+
+        if (!res.ok) {
+            throw new Error("Failed to get API token.");
+        }
+
+        var data = await res.json();
+
+        if (!data.token) {
+            throw new Error("API did not return a token.");
+        }
+
+        return data.token;
     }
 
     // ======================================================
     // TASK C: Fetch questions for the round
     // ======================================================
     async function fetchQuestions(cfg) {
-        // TODO:
+        // TODO: done
         // - build URL using API.questionsUrl(cfg.amount, cfg.difficulty, state.player.category, state.token)
         // - fetch + await json
         // - handle response_code:
         //   0 -> return results
         //   5 -> throw rate limit error
         //   else -> throw generic error
-        return [];
+
+        var url = API.questionsUrl(cfg.amount, cfg.difficulty, state.player.category, state.token);
+
+        var res = await fetch(url);
+
+        if (!res.ok) {
+            throw new Error("Failed to fetch trivia questions.");
+        }
+
+        var data = await res.json();
+
+        if (data.response_code === 0) {
+            return data.results;
+        } else if (data.response_code === 5) {
+            throw new Error("Too many requests. Please wait 5 seconds and try again.");
+        } else {
+            throw new Error("Could not retrieve questions. API response code: " + data.response_code);
+        }
+
     }
 
     // Display best score summary on Start screen
@@ -276,9 +343,11 @@
         // --------------------------------------------
         // Task E (Answer Review) — PARTIAL PROVIDED
         // --------------------------------------------
-        // TODO (students): Save the user's choice on the question object.
+        // TODO (students): Save the user's choice on the question object. done
         // Example:
         // q.userChoice = choiceText;
+
+        q.userChoice = choiceText;
 
         if (choiceText === q.correct) {
             state.score = state.score + 1;
@@ -323,6 +392,13 @@
             //  ok = (yourAns === qq.correct)
             //  use lines.push to show ✓ or ✗
 
+            var yourAns = qq.userChoice;
+            var ok = (yourAns === qq.correct);
+            var mark = ok ? "✓" : "✗";
+
+            lines.push("Your Answer: " + yourAns);
+            lines.push("Correct Answer: " + qq.correct);
+            lines.push("Result: " + mark);
             lines.push("");
         }
 
@@ -354,9 +430,10 @@
         // --------------------------------------------------
         // Task D (Difficulty selection) 
         // --------------------------------------------------
-        // TODO : Set (ROUND.difficulty) based on the dropdown selection (state - player - mode).
+        // TODO : Set (ROUND.difficulty) based on the dropdown selection (state - player - mode). done
         // The dropdown provides: "easy", "medium", or "hard"
 
+        ROUND.difficulty = state.player.mode;
 
         beginRound();
         showOnly(screenQuiz);
